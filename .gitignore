@@ -8,11 +8,8 @@ __pycache__/
 .env
 .env.*
 
-data/preparados/
-data/situaciones/
+data/output/
 *.xlsx
-
-pgdata/
 
 spec/
 docs/prueba.pdf

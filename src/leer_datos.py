@@ -5,8 +5,8 @@ import pandas as pd
 CARPETA_DATOS = r"C:/Users/micen/Documents/TYBA/data"
 CARPETA_PREPARADOS = CARPETA_DATOS + "/preparados"
 MARCADOR_PASO = CARPETA_PREPARADOS + "/paso_leer_datos_listo.txt"
-ARCHIVO_T = CARPETA_DATOS + r"/movimientos_dia_T.parquet"
-ARCHIVO_T1 = CARPETA_DATOS + r"/movimientos_dia_T1.parquet"
+ARCHIVO_T = CARPETA_DATOS + r"/raw/movimientos_dia_T.parquet"
+ARCHIVO_T1 = CARPETA_DATOS + r"/raw/movimientos_dia_T1.parquet"
 
 MAPA_TYPE = {
     "entrada": "IN",
