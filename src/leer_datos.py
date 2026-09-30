@@ -1,4 +1,5 @@
 import os
+from datetime import date, datetime
 
 import pandas as pd
 
@@ -15,7 +16,7 @@ MAPA_TYPE = {
     "out": "OUT",
 }
 
-def leer_parquet(ruta):
+def leer_parquet(ruta: str) -> pd.DataFrame:
     """Abre un Parquet. Si la ruta no existe, el try lo dice y corta."""
     try:
         df = pd.read_parquet(ruta)
@@ -28,7 +29,7 @@ def leer_parquet(ruta):
     return df
 
 
-def mostrar_perfil(df, nombre):
+def mostrar_perfil(df: pd.DataFrame, nombre: str) -> None:
     """Métricas del corte tal como llegó, antes de tocar nada."""
     print("\n" + "=" * 60)
     print(nombre)
@@ -49,23 +50,34 @@ def mostrar_perfil(df, nombre):
         print(df["type"].value_counts(dropna=False).head(20))
 
 
-def convertir_fechas(serie):
-    """Pasa date de texto a fecha.
+def convertir_fecha(valor: object) -> date | None:
+    """Pasa un date de texto a fecha.
 
-    Prueba un formato y, donde quede vacío, prueba el siguiente.
+    Prueba un formato y, si no entra, prueba el siguiente.
     2024-10-23 se lee como año-mes-día.
     01/10/2024 se lee como día/mes/año (1 de octubre), porque el negocio es Colombia.
     """
-    texto = serie.astype("string").str.strip()
-    fecha = pd.to_datetime(texto, format="%Y-%m-%d", errors="coerce")
+    if valor is None:
+        return None
 
-    fecha = fecha.fillna(pd.to_datetime(texto, format="%d/%m/%Y", errors="coerce"))
-    fecha = fecha.fillna(pd.to_datetime(texto, format="%d-%m-%Y", errors="coerce"))
-    fecha = fecha.fillna(pd.to_datetime(texto, format="%Y/%m/%d", errors="coerce"))
-    return fecha
+    texto = str(valor).strip()
+    if texto == "" or texto.lower() in {"nat", "none", "nan", "<na>"}:
+        return None
+
+    for formato in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(texto, formato).date()
+        except ValueError:
+            continue
+    return None
 
 
-def traducir_type(valor):
+def convertir_fechas(serie: pd.Series) -> pd.Series:
+    """Aplica convertir_fecha a cada valor de la columna."""
+    return serie.map(convertir_fecha)
+
+
+def traducir_type(valor: object) -> str | None:
     """Convierte un type a IN/OUT.
 
     'salida' -> OUT
@@ -73,27 +85,31 @@ def traducir_type(valor):
     'salida-entrada' o 'salida / entrada' -> OUT-IN
     Si aparece una palabra que no está en MAPA_TYPE, devuelve nulo.
     """
-    if pd.isna(valor):
-        return pd.NA
+    if valor is None:
+        return None
 
-    texto = str(valor).strip().lower()
+    texto = str(valor).strip()
+    if texto == "" or texto.lower() in {"nat", "none", "nan", "<na>"}:
+        return None
+
+    texto = texto.lower()
     texto = texto.replace("/", "-")
     texto = texto.replace(" ", "")
 
     partes = [parte for parte in texto.split("-") if parte != ""]
     if not partes:
-        return pd.NA
+        return None
 
     traducidas = []
     for parte in partes:
         if parte not in MAPA_TYPE:
-            return pd.NA
+            return None
         traducidas.append(MAPA_TYPE[parte])
 
     return "-".join(traducidas)
 
 
-def preparar(df, nombre_corte):
+def preparar(df: pd.DataFrame, nombre_corte: str) -> tuple[pd.DataFrame, dict[str, str | int]]:
     """Transforma date y type. El df conserva las mismas columnas del Parquet."""
     df = df.copy()
 

@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: tyba
       POSTGRES_DB: movimientos
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - ./data/output:/var/lib/postgresql/data
       - ./sql/01_esquema.sql:/docker-entrypoint-initdb.d/01_esquema.sql:ro
