@@ -1,3 +1,4 @@
+import os
 from datetime import date
 from decimal import Decimal
 
@@ -23,11 +24,11 @@ COLUMNAS_CON_NULO = ("commercial_name", "amount", "description")
 
 def conectar() -> psycopg.Connection:
     return psycopg.connect(
-        host="localhost",
-        port=5433,
-        dbname="movimientos",
-        user="tyba",
-        password="tyba",
+        host=os.environ.get("POSTGRES_HOST", "localhost"),
+        port=int(os.environ.get("POSTGRES_PORT", "5433")),
+        dbname=os.environ.get("POSTGRES_DB", "movimientos"),
+        user=os.environ.get("POSTGRES_USER", "tyba"),
+        password=os.environ.get("POSTGRES_PASSWORD", "tyba"),
     )
 
 
@@ -207,23 +208,52 @@ def comprobar_dia(cur: psycopg.Cursor, fecha_corte: date) -> None:
         )
 
 
+def corte_ya_aplicado(cur: psycopg.Cursor, nombre_corte: str) -> date | None:
+    """Devuelve la fecha si ese corte ya se cargó. Si no, devuelve None."""
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS corte_aplicado (
+            nombre text PRIMARY KEY,
+            fecha_corte date NOT NULL
+        )
+        """
+    )
+    cur.execute(
+        "SELECT fecha_corte FROM corte_aplicado WHERE nombre = %s",
+        (nombre_corte,),
+    )
+    fila = cur.fetchone()
+    if fila is None:
+        return None
+    return fila[0]
+
+
 def cargar_dia(ruta: str, nombre_corte: str, fecha_corte: date) -> None:
     """Carga un Parquet, revisa duplicados y clasifica el día.
 
-    Si algo falla, se deshace la transacción. El historial no se vacía.
+    Si el corte ya se aplicó, no lo vuelve a cargar. Si algo falla, se deshace
+    la transacción. El historial no se vacía.
     """
-    try:
-        archivo = pq.ParquetFile(ruta)
-    except FileNotFoundError:
-        print(f"Revisar ruta del archivo: {ruta}")
-        raise
-
-    filas_archivo = archivo.metadata.num_rows
-    print(f"Leído: {ruta}")
-    print(f"Filas: {filas_archivo}")
-
     with conectar() as conn:
         with conn.cursor() as cur:
+            fecha_previa = corte_ya_aplicado(cur, nombre_corte)
+            if fecha_previa is not None:
+                print(
+                    f"El corte {nombre_corte} ya fue aplicado el {fecha_previa}. "
+                    "No se vuelve a cargar."
+                )
+                return
+
+            try:
+                archivo = pq.ParquetFile(ruta)
+            except FileNotFoundError:
+                print(f"Revisar ruta del archivo: {ruta}")
+                raise
+
+            filas_archivo = archivo.metadata.num_rows
+            print(f"Leído: {ruta}")
+            print(f"Filas: {filas_archivo}")
+
             cur.execute("TRUNCATE corte_dia")
 
             copiadas = 0
@@ -250,6 +280,13 @@ def cargar_dia(ruta: str, nombre_corte: str, fecha_corte: date) -> None:
             revisar_duplicados(cur)
             clasificar_dia(cur, fecha_corte)
             comprobar_dia(cur, fecha_corte)
+            cur.execute(
+                """
+                INSERT INTO corte_aplicado (nombre, fecha_corte)
+                VALUES (%s, %s)
+                """,
+                (nombre_corte, fecha_corte),
+            )
 
             cur.execute("SELECT count(*) FROM movimiento_vigente")
             vigente = cur.fetchone()[0]

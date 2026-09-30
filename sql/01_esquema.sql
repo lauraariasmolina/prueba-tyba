@@ -41,6 +41,11 @@ CREATE TABLE movimiento_historial (
         CHECK (situacion = 'eliminado')
 );
 
+CREATE TABLE corte_aplicado (
+    nombre text PRIMARY KEY,
+    fecha_corte date NOT NULL
+);
+
 CREATE TABLE corte_dia (
     id_cliente text NOT NULL,
     date date NOT NULL,

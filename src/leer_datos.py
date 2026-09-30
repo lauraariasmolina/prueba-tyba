@@ -1,13 +1,15 @@
 import os
 from datetime import date, datetime
+from pathlib import Path
 
 import pandas as pd
 
-CARPETA_DATOS = r"C:/Users/micen/Documents/TYBA/data"
-CARPETA_PREPARADOS = CARPETA_DATOS + "/preparados"
-MARCADOR_PASO = CARPETA_PREPARADOS + "/paso_leer_datos_listo.txt"
-ARCHIVO_T = CARPETA_DATOS + r"/raw/movimientos_dia_T.parquet"
-ARCHIVO_T1 = CARPETA_DATOS + r"/raw/movimientos_dia_T1.parquet"
+RAIZ = Path(__file__).resolve().parents[1]
+CARPETA_DATOS = RAIZ / "data"
+CARPETA_PREPARADOS = CARPETA_DATOS / "preparados"
+MARCADOR_PASO = CARPETA_PREPARADOS / "paso_leer_datos_listo.txt"
+ARCHIVO_T = str(CARPETA_DATOS / "raw" / "movimientos_dia_T.parquet")
+ARCHIVO_T1 = str(CARPETA_DATOS / "raw" / "movimientos_dia_T1.parquet")
 
 MAPA_TYPE = {
     "entrada": "IN",
@@ -172,8 +174,8 @@ if __name__ == '__main__':
     # print("\n20 filas de T+1 después de fechas y type")
     # print(df_t1.head(20))
 
-    df_t.to_parquet(CARPETA_PREPARADOS + "/movimientos_dia_T.parquet", index=False)
-    df_t1.to_parquet(CARPETA_PREPARADOS + "/movimientos_dia_T1.parquet", index=False)
+    df_t.to_parquet(CARPETA_PREPARADOS / "movimientos_dia_T.parquet", index=False)
+    df_t1.to_parquet(CARPETA_PREPARADOS / "movimientos_dia_T1.parquet", index=False)
 
     with open(MARCADOR_PASO, "w", encoding="utf-8") as marca:
         marca.write("ok")
