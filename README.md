@@ -2,6 +2,8 @@
 
 Carga dos cortes diarios en PostgreSQL y deja las transacciones vigentes y el historial de lo que salió. Cada corrida procesa un solo Parquet. Docker corre primero el día T y después el día T+1.
 
+Las inconsistencias de los archivos, las decisiones de diseño y el resultado de los dos días están en [docs/insights.md](docs/insights.md).
+
 ## Requisitos
 
 - Docker con Compose
