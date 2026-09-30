@@ -48,9 +48,32 @@ def copiar_bloque(cur: psycopg.Cursor, df: pd.DataFrame) -> None:
             copia.write_row(tuple(valor_sql(valor) for valor in fila))
 
 
+def revisar_duplicados(cur: psycopg.Cursor) -> None:
+    """Si una fila completa está repetida, imprime esas llaves y corta la carga."""
+    columnas = ", ".join(COLUMNAS)
+    cur.execute(
+        f"""
+        SELECT {columnas}, count(*) AS copias
+        FROM corte_dia
+        GROUP BY {columnas}
+        HAVING count(*) > 1
+        """
+    )
+    repetidas = cur.fetchall()
+    if not repetidas:
+        print("Duplicados en el día: 0")
+        return
+
+    print(f"Duplicados en el día: {len(repetidas)}")
+    for fila in repetidas:
+        print(fila)
+    raise RuntimeError("El corte trae filas idénticas. La carga se deshace.")
+
+
 def cargar_dia(ruta: str, nombre_corte: str) -> None:
     """Vacía corte_dia, lee un Parquet por bloques y copia cada bloque.
 
+    Si el día trae una fila completa repetida, la transacción se deshace.
     Vigente e historial no se modifican.
     """
     try:
@@ -92,6 +115,8 @@ def cargar_dia(ruta: str, nombre_corte: str) -> None:
                 raise RuntimeError(
                     f"corte_dia quedó con {en_tabla} filas y el archivo tiene {filas_archivo}"
                 )
+
+            revisar_duplicados(cur)
 
     print(f"Copiadas: {copiadas} | corte_dia: {en_tabla}")
     print(f"vigente: {vigente} | historial: {historial}")
