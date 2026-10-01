@@ -12,6 +12,7 @@ RAIZ = Path(__file__).resolve().parents[1]
 ESQUEMA = "prueba_clasificar"
 AYER = date(2026, 9, 30)
 HOY = date(2026, 10, 1)
+MANANA = date(2026, 10, 2)
 
 # La misma fila en ayer y en hoy.
 SIN_CAMBIOS = (
@@ -192,3 +193,14 @@ def test_el_cierre_corta_si_la_misma_fila_esta_en_vigente_y_en_historial(cur):
 
     with pytest.raises(RuntimeError, match="Hay 1 llaves"):
         comprobar_dia(cur, HOY)
+
+
+def test_una_fila_eliminada_puede_volver_identica_al_dia_siguiente(cur):
+    clasificar_dia(cur, HOY)
+    insertar_corte(cur, COMPRA)
+
+    clasificar_dia(cur, MANANA)
+    comprobar_dia(cur, MANANA)
+
+    assert situacion_de(cur, "movimiento_vigente", COMPRA) == ("nuevo", MANANA)
+    assert situacion_de(cur, "movimiento_historial", COMPRA) == ("eliminado", HOY)

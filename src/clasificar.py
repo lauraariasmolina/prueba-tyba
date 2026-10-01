@@ -80,7 +80,11 @@ def clasificar_dia(cur: psycopg.Cursor, fecha_corte: date) -> None:
 
 
 def comprobar_dia(cur: psycopg.Cursor, fecha_corte: date) -> None:
-    """Cuenta el cierre del día y corta si una llave está en vigente y en historial."""
+    """Cuenta el cierre del día y corta si hoy la misma llave quedó en vigente y en historial.
+
+    Una fila eliminada en un día anterior puede volver. El historial de ese día
+    se conserva y la fila entra otra vez a vigente. Eso no deshace la corrida.
+    """
     cur.execute(
         """
         SELECT
@@ -111,9 +115,13 @@ def comprobar_dia(cur: psycopg.Cursor, fecha_corte: date) -> None:
         FROM (
             SELECT {columnas} FROM movimiento_vigente
             INTERSECT
-            SELECT {columnas} FROM movimiento_historial
+            SELECT {columnas}
+            FROM movimiento_historial
+            WHERE situacion = 'eliminado'
+              AND fecha_corte = %s
         ) AS repetidas
-        """
+        """,
+        (fecha_corte,),
     )
     repetidas = cur.fetchone()[0]
 

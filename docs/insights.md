@@ -29,7 +29,7 @@ Después de correr los dos días, la información queda en dos tablas. Una terce
 
 `corte_dia` es una mesa de trabajo. Recibe el archivo de hoy, se compara con `movimiento_vigente` y, si el día termina bien, se vacía. No guarda historia y no sirve para consultar. Su función se explica más abajo, porque es lo que permite que el mismo proceso sirva con millones de filas.
 
-Una fila está en vigente o en historial, no en las dos. Las dos se distinguen por la fila completa, no por el cliente.
+El mismo día, una fila no queda en vigente y en historial. Si salió en un día anterior y un archivo posterior la trae otra vez idéntica, vuelve a vigente y el historial conserva el día en que había salido.
 
 ## Cómo se decide dónde queda cada fila
 
@@ -46,6 +46,8 @@ Cada corrida recibe un solo archivo, el del día. Los movimientos del día anter
 El primer día la tabla vigente está vacía, así que todas las filas de T entran como nuevas. Al día siguiente, vigente ya tiene lo de T y el archivo de T+1 se compara contra eso.
 
 Si el monto o la descripción cambian, no es una corrección del mismo movimiento. Son dos filas distintas. La de ayer sale de vigente y queda en historial, porque el archivo de hoy no la trae. La de hoy entra a vigente, porque ayer no estaba.
+
+Si una fila ya está en el historial y el archivo de hoy la trae otra vez igual, entra a vigente como nueva. La fila del historial no se borra: sigue diciendo qué día había dejado de venir.
 
 ## Para qué sirve corte_dia
 
