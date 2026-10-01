@@ -1,3 +1,4 @@
+import re
 from datetime import date, datetime
 
 import pandas as pd
@@ -7,6 +8,16 @@ MAPA_TYPE = {
     "salida": "OUT",
     "in": "IN",
     "out": "OUT",
+}
+
+MAPA_FUND = {
+    "balanceado": "Balanceado",
+    "conservador": "Conservador",
+    "crecimiento": "Crecimiento",
+    "internacional": "Internacional",
+    "mercado monetario": "Mercado Monetario",
+    "renta fija": "Renta Fija",
+    "renta variable": "Renta Variable",
 }
 
 
@@ -69,8 +80,26 @@ def traducir_type(valor: object) -> str | None:
     return "-".join(traducidas)
 
 
+def normalizar_fund(valor: object) -> str | None:
+    """Pasa un fund al nombre del catálogo.
+
+    Quita espacios de más y no distingue mayúsculas.
+    'RENTA VARIABLE' y '  Renta Variable  ' quedan en 'Renta Variable'.
+    Si el texto no está en el catálogo, devuelve nulo.
+    """
+    if valor is None:
+        return None
+
+    texto = str(valor).strip()
+    if texto == "" or texto.lower() in {"nat", "none", "nan", "<na>"}:
+        return None
+
+    texto = re.sub(r"\s+", " ", texto).lower()
+    return MAPA_FUND.get(texto)
+
+
 def preparar(df: pd.DataFrame, nombre_corte: str) -> tuple[pd.DataFrame, dict[str, str | int]]:
-    """Transforma date y type. El df conserva las mismas columnas del Parquet."""
+    """Transforma date, type y fund. El df conserva las mismas columnas del Parquet."""
     df = df.copy()
 
     fecha_texto = df["date"]
@@ -80,6 +109,10 @@ def preparar(df: pd.DataFrame, nombre_corte: str) -> tuple[pd.DataFrame, dict[st
     type_texto = df["type"]
     df["type"] = type_texto.map(traducir_type)
     type_sin_mapa = int((type_texto.notna() & df["type"].isna()).sum())
+
+    fund_texto = df["fund"]
+    df["fund"] = fund_texto.map(normalizar_fund)
+    fondos_sin_mapa = int((fund_texto.notna() & df["fund"].isna()).sum())
 
     monto_texto = df["amount"]
     df["amount"] = pd.to_numeric(monto_texto, errors="coerce")
@@ -91,6 +124,7 @@ def preparar(df: pd.DataFrame, nombre_corte: str) -> tuple[pd.DataFrame, dict[st
         "columnas": len(df.columns),
         "fechas_invalidas": fechas_invalidas,
         "type_sin_mapa": type_sin_mapa,
+        "fondos_sin_mapa": fondos_sin_mapa,
         "montos_invalidos": montos_invalidos,
         "ids_nulos": int(df["id_cliente"].isna().sum()),
     }

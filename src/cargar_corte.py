@@ -47,6 +47,7 @@ def cargar_dia(ruta: str, nombre_corte: str, fecha_corte: date) -> None:
                     f"filas={control['filas']} columnas={control['columnas']} "
                     f"fechas_invalidas={control['fechas_invalidas']} "
                     f"type_sin_mapa={control['type_sin_mapa']} "
+                    f"fondos_sin_mapa={control['fondos_sin_mapa']} "
                     f"montos_invalidos={control['montos_invalidos']} "
                     f"ids_nulos={control['ids_nulos']}"
                 )
