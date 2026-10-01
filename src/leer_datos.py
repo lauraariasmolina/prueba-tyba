@@ -1,4 +1,3 @@
-import os
 from datetime import date, datetime
 from pathlib import Path
 
@@ -6,8 +5,6 @@ import pandas as pd
 
 RAIZ = Path(__file__).resolve().parents[1]
 CARPETA_DATOS = RAIZ / "data"
-CARPETA_PREPARADOS = CARPETA_DATOS / "preparados"
-MARCADOR_PASO = CARPETA_PREPARADOS / "paso_leer_datos_listo.txt"
 ARCHIVO_T = str(CARPETA_DATOS / "raw" / "movimientos_dia_T.parquet")
 ARCHIVO_T1 = str(CARPETA_DATOS / "raw" / "movimientos_dia_T1.parquet")
 
@@ -17,40 +14,6 @@ MAPA_TYPE = {
     "in": "IN",
     "out": "OUT",
 }
-
-def leer_parquet(ruta: str) -> pd.DataFrame:
-    """Abre un Parquet. Si la ruta no existe, el try lo dice y corta."""
-    try:
-        df = pd.read_parquet(ruta)
-    except FileNotFoundError:
-        print(f"Revisar ruta del archivo: {ruta}")
-        raise
-
-    print(f"Leído: {ruta}")
-    print(f"Filas: {len(df)} | Columnas: {list(df.columns)}")
-    return df
-
-
-def mostrar_perfil(df: pd.DataFrame, nombre: str) -> None:
-    """Métricas del corte tal como llegó, antes de tocar nada."""
-    print("\n" + "=" * 60)
-    print(nombre)
-    print("=" * 60)
-    print("Dimensiones:", df.shape)
-    print("\nTipos de dato:")
-    print(df.dtypes)
-    print("\nNulos por columna:")
-    print(df.isna().sum())
-
-    if "id_cliente" in df.columns:
-        repetidos = df["id_cliente"].duplicated().sum()
-        print("\nIds nulos:", df["id_cliente"].isna().sum())
-        print("Ids duplicados:", repetidos)
-
-    if "type" in df.columns:
-        print("\nValores de type:")
-        print(df["type"].value_counts(dropna=False).head(20))
-
 
 def convertir_fecha(valor: object) -> date | None:
     """Pasa un date de texto a fecha.
@@ -137,51 +100,3 @@ def preparar(df: pd.DataFrame, nombre_corte: str) -> tuple[pd.DataFrame, dict[st
         "ids_nulos": int(df["id_cliente"].isna().sum()),
     }
     return df, controles
-
-
-if __name__ == '__main__':
-    os.makedirs(CARPETA_PREPARADOS, exist_ok=True)
-    if os.path.exists(MARCADOR_PASO):
-        os.remove(MARCADOR_PASO)
-
-    try:
-        df_t = leer_parquet(ARCHIVO_T)
-        df_t1 = leer_parquet(ARCHIVO_T1)
-    except FileNotFoundError:
-        print("Revisar ruta de los archivos")
-        raise
-
-    df_t, control_t = preparar(df_t, "T")
-    df_t1, control_t1 = preparar(df_t1, "T1")
-
-    for control in (control_t, control_t1):
-        print(
-            f"Control {control['corte']}: "
-            f"filas={control['filas']} columnas={control['columnas']} "
-            f"fechas_invalidas={control['fechas_invalidas']} "
-            f"type_sin_mapa={control['type_sin_mapa']} "
-            f"montos_invalidos={control['montos_invalidos']} "
-            f"ids_nulos={control['ids_nulos']}"
-        )
-
-    pd.set_option("display.max_columns", None)
-    pd.set_option("display.max_rows", None)
-    pd.set_option("display.width", None)
-
-    # print("\n20 filas de T después de fechas y type")
-    # print(df_t.head(100))
-
-    # print("\n20 filas de T+1 después de fechas y type")
-    # print(df_t1.head(20))
-
-    df_t.to_parquet(CARPETA_PREPARADOS / "movimientos_dia_T.parquet", index=False)
-    df_t1.to_parquet(CARPETA_PREPARADOS / "movimientos_dia_T1.parquet", index=False)
-
-    with open(MARCADOR_PASO, "w", encoding="utf-8") as marca:
-        marca.write("ok")
-
-    print("Siguiente paso habilitado:", MARCADOR_PASO)
-
-    duplicados = df_t[df_t.duplicated(subset=['id_cliente'])]['id_cliente'].unique()
-    print("Duplicados:")
-    print(duplicados)
