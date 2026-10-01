@@ -1,12 +1,6 @@
 from datetime import date, datetime
-from pathlib import Path
 
 import pandas as pd
-
-RAIZ = Path(__file__).resolve().parents[1]
-CARPETA_DATOS = RAIZ / "data"
-ARCHIVO_T = str(CARPETA_DATOS / "raw" / "movimientos_dia_T.parquet")
-ARCHIVO_T1 = str(CARPETA_DATOS / "raw" / "movimientos_dia_T1.parquet")
 
 MAPA_TYPE = {
     "entrada": "IN",
@@ -14,6 +8,7 @@ MAPA_TYPE = {
     "in": "IN",
     "out": "OUT",
 }
+
 
 def convertir_fecha(valor: object) -> date | None:
     """Pasa un date de texto a fecha.

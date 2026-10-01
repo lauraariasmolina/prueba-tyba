@@ -1,12 +1,13 @@
 import sys
 from datetime import date
+from pathlib import Path
 
 from src.cargar_corte import cargar_dia
-from src.leer_datos import ARCHIVO_T, ARCHIVO_T1
 
+CARPETA_RAW = Path(__file__).resolve().parents[1] / "data" / "raw"
 ARCHIVOS = {
-    "T": ARCHIVO_T,
-    "T1": ARCHIVO_T1,
+    "T": str(CARPETA_RAW / "movimientos_dia_T.parquet"),
+    "T1": str(CARPETA_RAW / "movimientos_dia_T1.parquet"),
 }
 
 

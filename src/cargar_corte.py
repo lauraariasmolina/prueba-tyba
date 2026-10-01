@@ -4,7 +4,7 @@ import pyarrow.parquet as pq
 
 import src.base_datos as bd
 from src.clasificar import clasificar_dia, comprobar_dia
-from src.leer_datos import preparar
+from src.limpieza import preparar
 
 TAMANO_BLOQUE = 100_000
 
