@@ -10,6 +10,7 @@ CREATE TABLE movimiento_vigente (
     description text,
     situacion text NOT NULL,
     fecha_corte date NOT NULL,
+    primera_vista date NOT NULL,
     CONSTRAINT movimiento_vigente_situacion_chk
         CHECK (situacion IN ('nuevo', 'sin_cambios')),
     CONSTRAINT movimiento_vigente_llave_uq
@@ -37,6 +38,7 @@ CREATE TABLE movimiento_historial (
     description text,
     situacion text NOT NULL,
     fecha_corte date NOT NULL,
+    primera_vista date NOT NULL,
     CONSTRAINT movimiento_historial_situacion_chk
         CHECK (situacion = 'eliminado')
 );

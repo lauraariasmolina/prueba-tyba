@@ -65,16 +65,23 @@ def sentencias_del_esquema() -> list[str]:
     return [parte.strip() for parte in texto.split(";") if parte.strip()]
 
 
-def insertar_vigente(cur: psycopg.Cursor, fila: tuple, fecha_corte: date) -> None:
+def insertar_vigente(
+    cur: psycopg.Cursor,
+    fila: tuple,
+    fecha_corte: date,
+    primera_vista: date | None = None,
+) -> None:
+    if primera_vista is None:
+        primera_vista = fecha_corte
     cur.execute(
         """
         INSERT INTO movimiento_vigente (
             id_cliente, date, product, type, fund,
             commercial_name, amount, description,
-            situacion, fecha_corte
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'nuevo', %s)
+            situacion, fecha_corte, primera_vista
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'nuevo', %s, %s)
         """,
-        (*fila, fecha_corte),
+        (*fila, fecha_corte, primera_vista),
     )
 
 
@@ -90,23 +97,30 @@ def insertar_corte(cur: psycopg.Cursor, fila: tuple) -> None:
     )
 
 
-def insertar_historial(cur: psycopg.Cursor, fila: tuple, fecha_corte: date) -> None:
+def insertar_historial(
+    cur: psycopg.Cursor,
+    fila: tuple,
+    fecha_corte: date,
+    primera_vista: date | None = None,
+) -> None:
+    if primera_vista is None:
+        primera_vista = fecha_corte
     cur.execute(
         """
         INSERT INTO movimiento_historial (
             id_cliente, date, product, type, fund,
             commercial_name, amount, description,
-            situacion, fecha_corte
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'eliminado', %s)
+            situacion, fecha_corte, primera_vista
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'eliminado', %s, %s)
         """,
-        (*fila, fecha_corte),
+        (*fila, fecha_corte, primera_vista),
     )
 
 
 def situacion_de(cur: psycopg.Cursor, tabla: str, fila: tuple) -> tuple | None:
     cur.execute(
         f"""
-        SELECT situacion, fecha_corte
+        SELECT situacion, fecha_corte, primera_vista
         FROM {tabla}
         WHERE id_cliente = %s
           AND date = %s
@@ -156,9 +170,9 @@ def cur():
 def test_sin_cambios_se_queda_en_vigente_con_la_fecha_de_hoy(cur, capsys):
     clasificar_dia(cur, HOY)
 
-    assert situacion_de(cur, "movimiento_vigente", SIN_CAMBIOS) == ("sin_cambios", HOY)
+    assert situacion_de(cur, "movimiento_vigente", SIN_CAMBIOS) == ("sin_cambios", HOY, AYER)
     assert situacion_de(cur, "movimiento_historial", SIN_CAMBIOS) is None
-    assert situacion_de(cur, "movimiento_vigente", CON_NULOS) == ("sin_cambios", HOY)
+    assert situacion_de(cur, "movimiento_vigente", CON_NULOS) == ("sin_cambios", HOY, AYER)
     assert situacion_de(cur, "movimiento_historial", CON_NULOS) is None
     assert "sin_cambios: 2" in capsys.readouterr().out
 
@@ -167,14 +181,14 @@ def test_eliminados_salen_de_vigente_y_quedan_en_el_historial(cur, capsys):
     clasificar_dia(cur, HOY)
 
     assert situacion_de(cur, "movimiento_vigente", COMPRA) is None
-    assert situacion_de(cur, "movimiento_historial", COMPRA) == ("eliminado", HOY)
+    assert situacion_de(cur, "movimiento_historial", COMPRA) == ("eliminado", HOY, AYER)
     assert "eliminados: 1" in capsys.readouterr().out
 
 
 def test_nuevos_entran_a_vigente(cur, capsys):
     clasificar_dia(cur, HOY)
 
-    assert situacion_de(cur, "movimiento_vigente", VENTA) == ("nuevo", HOY)
+    assert situacion_de(cur, "movimiento_vigente", VENTA) == ("nuevo", HOY, HOY)
     assert situacion_de(cur, "movimiento_historial", VENTA) is None
     assert "nuevos: 1" in capsys.readouterr().out
 
@@ -182,8 +196,8 @@ def test_nuevos_entran_a_vigente(cur, capsys):
 def test_un_cambio_de_monto_no_pisa_la_fila_anterior(cur):
     clasificar_dia(cur, HOY)
 
-    assert situacion_de(cur, "movimiento_historial", COMPRA) == ("eliminado", HOY)
-    assert situacion_de(cur, "movimiento_vigente", VENTA) == ("nuevo", HOY)
+    assert situacion_de(cur, "movimiento_historial", COMPRA) == ("eliminado", HOY, AYER)
+    assert situacion_de(cur, "movimiento_vigente", VENTA) == ("nuevo", HOY, HOY)
     cur.execute("SELECT count(*) FROM corte_dia")
     assert cur.fetchone()[0] == 0
 
@@ -202,5 +216,5 @@ def test_una_fila_eliminada_puede_volver_identica_al_dia_siguiente(cur):
     clasificar_dia(cur, MANANA)
     comprobar_dia(cur, MANANA)
 
-    assert situacion_de(cur, "movimiento_vigente", COMPRA) == ("nuevo", MANANA)
-    assert situacion_de(cur, "movimiento_historial", COMPRA) == ("eliminado", HOY)
+    assert situacion_de(cur, "movimiento_vigente", COMPRA) == ("nuevo", MANANA, MANANA)
+    assert situacion_de(cur, "movimiento_historial", COMPRA) == ("eliminado", HOY, AYER)

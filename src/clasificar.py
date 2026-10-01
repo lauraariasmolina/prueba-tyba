@@ -8,15 +8,20 @@ from src.columnas import COLUMNAS, misma_llave
 def pasar_eliminados(cur: psycopg.Cursor, fecha_corte: date) -> int:
     """Lo que estaba vigente y no viene hoy pasa al historial y sale de vigente."""
     columnas = ", ".join(COLUMNAS)
+    columnas_salieron = ", ".join(f"salieron.{columna}" for columna in COLUMNAS)
     cur.execute(
         f"""
-        INSERT INTO movimiento_historial ({columnas}, situacion, fecha_corte)
-        SELECT {columnas}, 'eliminado', %s
+        INSERT INTO movimiento_historial (
+            {columnas}, situacion, fecha_corte, primera_vista
+        )
+        SELECT {columnas_salieron}, 'eliminado', %s, vigente.primera_vista
         FROM (
             SELECT {columnas} FROM movimiento_vigente
             EXCEPT
             SELECT {columnas} FROM corte_dia
         ) AS salieron
+        JOIN movimiento_vigente AS vigente
+          ON {misma_llave("vigente", "salieron")}
         """,
         (fecha_corte,),
     )
@@ -36,7 +41,10 @@ def pasar_eliminados(cur: psycopg.Cursor, fecha_corte: date) -> int:
 
 
 def marcar_sin_cambios(cur: psycopg.Cursor, fecha_corte: date) -> int:
-    """Lo que está en vigente y en el día de hoy se queda, con sin_cambios."""
+    """Lo que está en vigente y en el día de hoy se queda, con sin_cambios.
+
+    Actualiza fecha_corte. primera_vista sigue siendo el día en que entró.
+    """
     cur.execute(
         f"""
         UPDATE movimiento_vigente AS vigente
@@ -55,15 +63,17 @@ def insertar_nuevos(cur: psycopg.Cursor, fecha_corte: date) -> int:
     columnas = ", ".join(COLUMNAS)
     cur.execute(
         f"""
-        INSERT INTO movimiento_vigente ({columnas}, situacion, fecha_corte)
-        SELECT {columnas}, 'nuevo', %s
+        INSERT INTO movimiento_vigente (
+            {columnas}, situacion, fecha_corte, primera_vista
+        )
+        SELECT {columnas}, 'nuevo', %s, %s
         FROM (
             SELECT {columnas} FROM corte_dia
             EXCEPT
             SELECT {columnas} FROM movimiento_vigente
         ) AS entraron
         """,
-        (fecha_corte,),
+        (fecha_corte, fecha_corte),
     )
     return cur.rowcount
 

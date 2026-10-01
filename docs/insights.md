@@ -102,7 +102,9 @@ Dos vacíos en `commercial_name`, `amount` o `description` cuentan como el mismo
 
 Si el archivo del día trae la misma fila dos veces, la carga se detiene y vigente e historial quedan como el día anterior. En T y en T+1 no pasa: el conteo de filas repetidas es cero. No se elige una de las dos copias.
 
-`fecha_corte` es el día en que se corre el archivo, no la fecha del movimiento. No está escrita en el código. Se pasa al ejecutar y, si no se pasa, se usa la fecha del día. En Docker, T toma la fecha del contenedor y T+1 el día siguiente. En vigente, esa fecha dice qué corrida dejó la fila ahí. En historial, dice qué día dejó de venir.
+`fecha_corte` es el día en que se corre el archivo, no la fecha del movimiento. No está escrita en el código. Se pasa al ejecutar y, si no se pasa, se usa la fecha del día. En Docker, T toma la fecha del contenedor y T+1 el día siguiente. En vigente, esa fecha dice qué corrida confirmó la fila por última vez. En historial, dice qué día dejó de venir.
+
+`primera_vista` es el día en que la fila entró a vigente. Se escribe al entrar como nueva y no cambia si un día posterior la trae igual. Al salir, se copia al historial: ahí dice cuándo empezó esa estadía, y `fecha_corte` dice cuándo terminó. Si la misma fila vuelve después de haber salido, la entrada nueva tiene su propia `primera_vista`, la del regreso.
 
 El Parquet original no se modifica.
 
