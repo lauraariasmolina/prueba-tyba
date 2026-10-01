@@ -53,3 +53,13 @@ python -m src.main T1 2026-10-01
 ```
 
 El primer argumento es el corte (`T` o `T1`). El segundo es la fecha de corte, en formato `AAAA-MM-DD`. Si no se pasa fecha, se usa la del día.
+
+## Pruebas
+
+Desde la raíz del repositorio, con el entorno de Python del proyecto:
+
+```bash
+python -m pytest
+```
+
+Las pruebas de clasificación se conectan a PostgreSQL en `localhost:5433`. Crean un esquema propio, cargan unas pocas filas y deshacen todo al terminar. Hace falta que el servicio de PostgreSQL esté levantado (`docker compose up -d postgres`). El resto de las pruebas no usa la base.

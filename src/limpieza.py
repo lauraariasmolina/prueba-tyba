@@ -49,12 +49,10 @@ def convertir_fechas(serie: pd.Series) -> pd.Series:
 
 
 def traducir_type(valor: object) -> str | None:
-    """Convierte un type a IN/OUT.
+    """Convierte un type a IN o OUT.
 
-    'salida' -> OUT
-    'entrada' -> IN
-    'salida-entrada' o 'salida / entrada' -> OUT-IN
-    Si aparece una palabra que no está en MAPA_TYPE, devuelve nulo.
+    'entrada' y 'in' quedan en IN. 'salida' y 'out' quedan en OUT.
+    No distingue mayúsculas. Si el texto no está en MAPA_TYPE, devuelve nulo.
     """
     if valor is None:
         return None
@@ -63,21 +61,7 @@ def traducir_type(valor: object) -> str | None:
     if texto == "" or texto.lower() in {"nat", "none", "nan", "<na>"}:
         return None
 
-    texto = texto.lower()
-    texto = texto.replace("/", "-")
-    texto = texto.replace(" ", "")
-
-    partes = [parte for parte in texto.split("-") if parte != ""]
-    if not partes:
-        return None
-
-    traducidas = []
-    for parte in partes:
-        if parte not in MAPA_TYPE:
-            return None
-        traducidas.append(MAPA_TYPE[parte])
-
-    return "-".join(traducidas)
+    return MAPA_TYPE.get(texto.lower())
 
 
 def normalizar_fund(valor: object) -> str | None:
