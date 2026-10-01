@@ -51,7 +51,7 @@ Si el monto o la descripción cambian, no es una corrección del mismo movimient
 
 La prueba advierte que el volumen puede crecer a millones de filas. Comparar el día de ayer y el de hoy armando las dos listas completas en la memoria de Python puede quedarse sin RAM. `corte_dia` evita eso.
 
-Python no arma vigente ni historial. Lee el Parquet por bloques de 100.000 filas, normaliza la fecha y el tipo en ese bloque, y lo copia a `corte_dia` con `COPY`. En memoria solo está el bloque que se está copiando. El archivo de ayer no se vuelve a leer: sus movimientos ya están en `movimiento_vigente`, en disco.
+Python no arma vigente ni historial. Lee el Parquet por bloques de 100.000 filas, normaliza la fecha, el tipo y el fondo en ese bloque, y lo copia a `corte_dia` con `COPY`. En memoria solo está el bloque que se está copiando. El archivo de ayer no se vuelve a leer: sus movimientos ya están en `movimiento_vigente`, en disco.
 
 La comparación la hace PostgreSQL entre dos tablas que ya están en la base: lo vigente y `corte_dia`. Así se decide qué sigue, qué sale al historial y qué entra como nuevo. Si algo falla, se deshace el día completo y las dos tablas de consulta quedan como estaban.
 
@@ -78,7 +78,9 @@ Las dos filas están en T y también en T+1. Como el monto y la descripción son
 
 `type` no llega en un solo formato. En T aparecen `entrada` (25.423), `salida` (20.631), `IN` (586), `Entrada` (547), `ENTRADA` (530), `in` (520), `Salida` (478), `out` (448), `SALIDA` (429) y `OUT` (408). T+1 trae las mismas diez formas. Antes de cargar, entrada se guarda como `IN` y salida como `OUT`. Ningún valor quedó sin mapa.
 
-`date` llega en dos textos. En T, 46.518 fechas están en `AAAA-MM-DD` y 3.482 en `DD/MM/AAAA`. En T+1 son 45.567 y 3.433. `01/10/2024` se lee como 1 de octubre, no como 10 de enero, porque el negocio es Colombia.
+`date` llega en dos textos. En T, 46.518 fechas están en `AAAA-MM-DD` y 3.482 en `DD/MM/AAAA`. En T+1 son 45.567 y 3.433. `01/10/2024` se lee como 1 de octubre, porque el negocio es Colombia.
+
+`fund` llega con 23 textos distintos en cada archivo y ninguno viene vacío. En T, 5.989 filas no usan el nombre del catálogo. En T+1 son 5.900. Cambian las mayúsculas o sobran espacios. Antes de cargar, el texto se pasa a minúsculas, se dejan los espacios en uno solo y se compara con siete nombres: Balanceado, Conservador, Crecimiento, Internacional, Mercado Monetario, Renta Fija y Renta Variable. En la última corrida ningún fondo quedó sin mapa. En vigente y en historial solo aparecen esos siete.
 
 `amount`, `description` y `commercial_name` vienen vacíos. El monto ya es numérico: el vacío es un nulo, no un texto inválido. Esas filas se cargan. No se descartan.
 
@@ -104,6 +106,8 @@ El Parquet original no se modifica.
 
 ## Resultado después de los dos días
 
+La última corrida fue con Docker. T usó la fecha del contenedor, `2026-10-01`. T+1 usó el día siguiente, `2026-10-02`. En los dos cortes el control de limpieza quedó en cero: fechas inválidas, tipos sin mapa, fondos sin mapa, montos inválidos e identificadores nulos. Tampoco hubo filas repetidas.
+
 La primera corrida carga T con vigente vacía. Las 50.000 filas entran a `movimiento_vigente` como nuevas. El historial sigue vacío.
 
 La segunda corrida carga T+1 y compara contra esas 50.000:
@@ -116,4 +120,4 @@ La segunda corrida carga T+1 y compara contra esas 50.000:
 
 35.159 + 13.841 = 49.000, que son las filas de T+1. Esas 49.000 quedan en `movimiento_vigente`. 35.159 + 14.841 = 50.000, que son las filas de T. Las 14.841 que T+1 ya no trae quedan en `movimiento_historial`.
 
-Los movimientos vigentes pasan de 50.000 a 49.000. Ninguna fila queda al mismo tiempo en las dos tablas.
+Los movimientos vigentes pasan de 50.000 a 49.000. Ninguna fila queda al mismo tiempo en las dos tablas. `corte_dia` queda vacía.
